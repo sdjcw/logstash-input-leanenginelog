@@ -71,6 +71,7 @@ describe "inputs/leanenginelog" do
     insist { events[1]["message"] } == "world"
     insist { events[0]["app_id"] } == "8y5ria0dtbvz7qp6alzy00p9nggky304fafdusfo79fba5sk"
     insist { events[0]["app_key"] } == "nfkx5k3p7otysvhr2fp84mxl8ggmehu7swyi18auvmrg7kd4"
+    insist { events[0]["container_name"] } == "/8y5ria0dtbvz7qp6alzy00p9nggky304fafdusfo79fba5sk_1_a_0_docker9"
   end
 
   it "should start at the beginning of an existing file" do

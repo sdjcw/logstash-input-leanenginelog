@@ -80,6 +80,8 @@ class LogStash::Inputs::LeanEngineLog < LogStash::Inputs::Base
     @logger.info("Registering file input", :path => @path)
     @host = Socket.gethostname.force_encoding(Encoding::UTF_8)
 
+    @containers_config = Hash.new
+
     @tail_config = {
       :exclude => @exclude,
       :stat_interval => @stat_interval,
@@ -138,15 +140,22 @@ class LogStash::Inputs::LeanEngineLog < LogStash::Inputs::Base
     @path.each { |path| @tail.tail(path) }
 
     @tail.subscribe do |path, line|
-      unless @appId
+      unless @containers_config[path]
         File.open("#{File.dirname(path)}/#{@config_file}", "r") do |f|
           c = JSON.load(f)
+          name = c['Name']
+          app_id = nil
+          app_key = nil
           for env in c["Config"]["Env"]
-            @container_name = env['Name']
-            @app_id = env[env.index('=')+1..-1] if env.start_with?("LC_APP_ID")
-            @app_key = env[env.index('=')+1..-1] if env.start_with?("LC_APP_KEY")
+            app_id = env[env.index('=')+1..-1] if env.start_with?("LC_APP_ID")
+            app_key = env[env.index('=')+1..-1] if env.start_with?("LC_APP_KEY")
           end
-          @logger.debug? && @logger.debug("New container, app_id=#{@app_id}, container_name=#{@container_name}")
+          @containers_config[path] = {
+            'name' => name,
+            'app_id' => app_id,
+            'app_key' => app_key
+          }
+          @logger.debug? && @logger.debug("New container, app_id=#{app_id}, container_name=#{name}")
         end
       end
       @logger.debug? && @logger.debug("Received line", :path => path, :text => line)
@@ -154,8 +163,9 @@ class LogStash::Inputs::LeanEngineLog < LogStash::Inputs::Base
         event["[@metadata][path]"] = path
         event["host"] = @host if !event.include?("host")
         event["path"] = path if !event.include?("path")
-        event["app_id"] = @app_id
-        event["app_key"] = @app_key
+        event["app_id"] = @containers_config[path]['app_id']
+        event["app_key"] = @containers_config[path]['app_key']
+        event["container_name"] = @containers_config[path]['name']
         decorate(event)
         queue << event
       end
