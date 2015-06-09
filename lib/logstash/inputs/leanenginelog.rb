@@ -3,6 +3,7 @@ require "logstash/inputs/base"
 require "logstash/namespace"
 
 require "pathname"
+require 'json'
 require "socket" # for Socket.gethostname
 
 # Stream events from files.
@@ -13,8 +14,8 @@ require "socket" # for Socket.gethostname
 #
 # Files are followed in a manner similar to `tail -0F`. File rotation
 # is detected and handled by this input.
-class LogStash::Inputs::File < LogStash::Inputs::Base
-  config_name "file"
+class LogStash::Inputs::LeanEngineLog < LogStash::Inputs::Base
+  config_name "leanenginelog"
 
   # TODO(sissel): This should switch to use the `line` codec by default
   # once file following
@@ -27,6 +28,9 @@ class LogStash::Inputs::File < LogStash::Inputs::Base
   # You may also configure multiple paths. See an example
   # on the <<array,Logstash configuration page>>.
   config :path, :validate => :array, :required => true
+
+  # Docker container's config file name.
+  config :config_file, :validate => :string, :default => "config.json"
 
   # Exclusions (matched against the filename, not full path). Globs
   # are valid here, too. For example, if you have
@@ -134,11 +138,24 @@ class LogStash::Inputs::File < LogStash::Inputs::Base
     @path.each { |path| @tail.tail(path) }
 
     @tail.subscribe do |path, line|
+      unless @appId
+        File.open("#{File.dirname(path)}/#{@config_file}", "r") do |f|
+          c = JSON.load(f)
+          for env in c["Config"]["Env"]
+            @container_name = env['Name']
+            @app_id = env[env.index('=')+1..-1] if env.start_with?("LC_APP_ID")
+            @app_key = env[env.index('=')+1..-1] if env.start_with?("LC_APP_KEY")
+          end
+          @logger.debug? && @logger.debug("New container, app_id=#{@app_id}, container_name=#{@container_name}")
+        end
+      end
       @logger.debug? && @logger.debug("Received line", :path => path, :text => line)
       @codec.decode(line) do |event|
         event["[@metadata][path]"] = path
         event["host"] = @host if !event.include?("host")
         event["path"] = path if !event.include?("path")
+        event["app_id"] = @app_id
+        event["app_key"] = @app_key
         decorate(event)
         queue << event
       end
