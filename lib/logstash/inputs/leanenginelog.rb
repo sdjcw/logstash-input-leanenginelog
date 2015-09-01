@@ -145,34 +145,42 @@ class LogStash::Inputs::LeanEngineLog < LogStash::Inputs::Base
     @path.each { |path| @tail.tail(path) }
 
     @tail.subscribe do |path, line|
-      unless @containers_config[path]
-        File.open("#{File.dirname(path)}/#{@config_file}", "r") do |f|
-          c = JSON.load(f)
-          name = c['Name']
-          app_id = nil
-          app_key = nil
-          for env in c["Config"]["Env"]
-            app_id = env[env.index('=')+1..-1] if env.start_with?("LC_APP_ID")
-            app_key = env[env.index('=')+1..-1] if env.start_with?("LC_APP_KEY")
+      begin
+        unless @containers_config[path]
+          File.open("#{File.dirname(path)}/#{@config_file}", "r") do |f|
+            c = JSON.load(f)
+            name = c['Name']
+            app_id = nil
+            app_key = nil
+            prod = nil
+            for env in c["Config"]["Env"]
+              app_id = env[env.index('=')+1..-1] if env.start_with?("LC_APP_ID")
+              app_key = env[env.index('=')+1..-1] if env.start_with?("LC_APP_KEY")
+              prod = env[env.index('=')+1..-1] if env.start_with?("LC_APP_ENV")
+            end
+            @containers_config[path] = {
+              'name' => name,
+              'app_id' => app_id,
+              'app_key' => app_key,
+              'prod' => prod
+            }
+            @logger.debug? && @logger.debug("New container, app_id=#{app_id}, container_name=#{name}")
           end
-          @containers_config[path] = {
-            'name' => name,
-            'app_id' => app_id,
-            'app_key' => app_key
-          }
-          @logger.debug? && @logger.debug("New container, app_id=#{app_id}, container_name=#{name}")
         end
-      end
-      @logger.debug? && @logger.debug("Received line", :path => path, :text => line)
-      @codec.decode(line) do |event|
-        event["[@metadata][path]"] = path
-        event["host"] = @host if !event.include?("host")
-        event["path"] = path if !event.include?("path")
-        event["app_id"] = @containers_config[path]['app_id']
-        event["app_key"] = @containers_config[path]['app_key']
-        event["container_name"] = @containers_config[path]['name']
-        decorate(event)
-        queue << event
+        @logger.debug? && @logger.debug("Received line", :path => path, :text => line)
+        @codec.decode(line) do |event|
+          event["[@metadata][path]"] = path
+          event["host"] = @host if !event.include?("host")
+          event["path"] = path if !event.include?("path")
+          event["app_id"] = @containers_config[path]['app_id']
+          event["app_key"] = @containers_config[path]['app_key']
+          event["prod"] = @containers_config[path]['prod']
+          event["container_name"] = @containers_config[path]['name']
+          decorate(event)
+          queue << event
+        end
+      rescue => err
+        @logger.error("leanengine log process error", :path => path, :line => line, :err => err.backtrace)
       end
     end
     finished
