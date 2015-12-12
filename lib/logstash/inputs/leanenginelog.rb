@@ -207,16 +207,19 @@ class LogStash::Inputs::LeanEngineLog < LogStash::Inputs::Base
             app_id = nil
             app_key = nil
             prod = nil
+            instance = '0'
             for env in c["Config"]["Env"]
               app_id = env[env.index('=')+1..-1] if env.start_with?("LC_APP_ID")
               app_key = env[env.index('=')+1..-1] if env.start_with?("LC_APP_KEY")
               prod = env[env.index('=')+1..-1] if env.start_with?("LC_APP_ENV")
+              instance = env[env.index('=')+1..-1] if env.start_with?("LC_APP_INSTANCE")
             end
             @containers_config[path] = {
               'name' => name,
               'app_id' => app_id,
               'app_key' => app_key,
-              'prod' => prod
+              'prod' => prod,
+              'instance' => instance
             }
             @logger.debug? && @logger.debug("New container, app_id=#{app_id}, container_name=#{name}")
           end
@@ -229,6 +232,7 @@ class LogStash::Inputs::LeanEngineLog < LogStash::Inputs::Base
           event["app_id"] = @containers_config[path]['app_id']
           event["app_key"] = @containers_config[path]['app_key']
           event["prod"] = @containers_config[path]['prod']
+          event["instance"] = @containers_config[path]['instance']
           event["container_name"] = @containers_config[path]['name']
           decorate(event)
           queue << event

@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
 
-  s.name            = 'logstash-input-file'
+  s.name            = 'logstash-input-leanenginelog'
   s.version         = '1.0.2.1'
   s.licenses        = ['Apache License (2.0)']
   s.summary         = "Stream events from LeanEngine logs."
