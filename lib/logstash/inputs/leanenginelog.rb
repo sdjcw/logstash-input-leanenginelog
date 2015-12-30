@@ -211,6 +211,7 @@ class LogStash::Inputs::LeanEngineLog < LogStash::Inputs::Base
             for env in c["Config"]["Env"]
               app_id = env[env.index('=')+1..-1] if env.start_with?("LC_APP_ID")
               app_key = env[env.index('=')+1..-1] if env.start_with?("LC_APP_KEY")
+              master_key = env[env.index('=')+1..-1] if env.start_with?("LC_APP_MASTER_KEY")
               prod = env[env.index('=')+1..-1] if env.start_with?("LC_APP_ENV")
               instance = env[env.index('=')+1..-1] if env.start_with?("LC_APP_INSTANCE")
             end
@@ -218,6 +219,7 @@ class LogStash::Inputs::LeanEngineLog < LogStash::Inputs::Base
               'name' => name,
               'app_id' => app_id,
               'app_key' => app_key,
+              'master_key' => master_key,
               'prod' => prod,
               'instance' => instance
             }
@@ -231,6 +233,7 @@ class LogStash::Inputs::LeanEngineLog < LogStash::Inputs::Base
           event["path"] = path if !event.include?("path")
           event["app_id"] = @containers_config[path]['app_id']
           event["app_key"] = @containers_config[path]['app_key']
+          event["master_key"] = @containers_config[path]['master_key']
           event["prod"] = @containers_config[path]['prod']
           event["instance"] = @containers_config[path]['instance']
           event["container_name"] = @containers_config[path]['name']

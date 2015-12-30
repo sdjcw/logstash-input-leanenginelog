@@ -80,6 +80,7 @@ describe "inputs/leanenginelog" do
     insist { events[1]["message"] } == "world"
     insist { events[0]["app_id"] } == "8y5ria0dtbvz7qp6alzy00p9nggky304fafdusfo79fba5sk"
     insist { events[0]["app_key"] } == "nfkx5k3p7otysvhr2fp84mxl8ggmehu7swyi18auvmrg7kd4"
+    insist { events[0]["master_key"] } == "zhvl25xtgdxvfgijceos1s0eonpxt24gzh3dzq6ec30n0pn4"
     insist { events[0]["prod"] } == "stage"
     insist { events[0]["instance"] } == "3"
     insist { events[0]["container_name"] } == "/8y5ria0dtbvz7qp6alzy00p9nggky304fafdusfo79fba5sk_0_b_3_docker11"
